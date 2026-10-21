@@ -1,0 +1,1126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Heartstring Studio — Story Video Maker</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px 12px 60px;
+    background: radial-gradient(1200px 600px at 50% -10%, #1b2440, #0a0e1a 60%);
+    color: #e8e6f0; font-family: Georgia, "Times New Roman", serif;
+  }
+  .app { width: min(1100px, 96vw); margin: 0 auto; }
+  h1 { text-align: center; font-weight: 600; letter-spacing: .5px; margin: 8px 0 2px; color: #f4e7c8; }
+  .sub { text-align: center; color: #9aa7c7; font-style: italic; margin: 0 0 22px; }
+  fieldset {
+    border: 1px solid #2a3352; border-radius: 16px; padding: 18px;
+    background: rgba(16,22,42,.75); margin-bottom: 18px;
+  }
+  legend { padding: 0 10px; color: #e8c98d; font-style: italic; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+  label { display: block; font-size: 13px; color: #aab4d4; margin-bottom: 6px; font-family: Arial, sans-serif; }
+  select, input[type=text], input[type=number] {
+    width: 100%; padding: 9px 10px; border-radius: 9px; border: 1px solid #35406a;
+    background: #101730; color: #eee; font-size: 14px; font-family: Arial, sans-serif;
+  }
+  input[type=range] { width: 100%; accent-color: #e8c98d; }
+  .val { color: #f4e7c8; font-weight: bold; font-family: Arial, sans-serif; }
+  .hint { font-size: 12px; color: #7f8bb0; margin-top: 6px; font-family: Arial, sans-serif; }
+  canvas {
+    width: 100%; display: block; border-radius: 16px; background: #000;
+    box-shadow: 0 24px 70px rgba(0,0,0,.55);
+  }
+  .bar { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin: 18px 0 8px; }
+  button {
+    border: 0; border-radius: 11px; padding: 13px 22px; font-size: 15px; font-weight: bold;
+    cursor: pointer; color: #10142a; background: #f0d9a6; font-family: Arial, sans-serif;
+  }
+  button.rec { background: #e5606f; color: #fff; }
+  button.stop { background: #3a4570; color: #fff; }
+  button:hover { filter: brightness(1.12); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  #status { text-align: center; min-height: 22px; color: #b9c4e4; font-family: Arial, sans-serif; font-size: 14px; }
+  #result { margin-top: 24px; text-align: center; }
+  #result video { width: min(720px, 100%); border-radius: 14px; background: #000; }
+  #result a { display: inline-block; margin-top: 12px; color: #f0d9a6; font-size: 16px; }
+  .checkline { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #aab4d4; font-family: Arial, sans-serif; margin-top: 10px; }
+  .checkline input { accent-color: #e8c98d; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>♡ Heartstring Studio</h1>
+  <p class="sub">Turn a quiet little story into a real video file — with music — right in your browser.</p>
+
+  <fieldset id="panel">
+    <legend>Options</legend>
+    <div class="grid">
+      <div>
+        <label>Story</label>
+        <select id="storySel">
+          <option value="lantern">🏮 The Lantern Keeper — a light for everyone</option>
+          <option value="star">✦ The Little Star — you only have to shine for someone</option>
+          <option value="letters">✉ Forty Letters — love just changes hands</option>
+          <option value="chain">☕ The Kindness Chain — one coffee, one city</option>
+        </select>
+        <label style="margin-top:12px">Video title</label>
+        <input type="text" id="titleInp" maxlength="60" />
+      </div>
+      <div>
+        <label>Dedication (shown at the end)</label>
+        <input type="text" id="dedicInp" placeholder="e.g. Mom, Sarah, anyone you love…" maxlength="40" />
+        <label style="margin-top:12px">Duration: <span class="val" id="durVal"></span></label>
+        <input type="range" id="durRange" min="30" max="1800" step="15" value="180" />
+        <div class="hint">Up to 30 minutes. Recording happens in real time (a 5-min video takes 5 min).</div>
+      </div>
+      <div>
+        <label>Resolution</label>
+        <select id="resSel">
+          <option value="1280x720">1280 × 720 (HD, smaller file)</option>
+          <option value="1920x1080">1920 × 1080 (Full HD)</option>
+        </select>
+        <label style="margin-top:12px">Frame rate</label>
+        <select id="fpsSel">
+          <option value="24">24 fps (cinematic)</option>
+          <option value="30" selected>30 fps</option>
+          <option value="60">60 fps (smooth, big files)</option>
+        </select>
+      </div>
+      <div>
+        <label>Music</label>
+        <select id="musicSel">
+          <option value="piano" selected>♫ Gentle piano (generated live)</option>
+          <option value="file">♫ My own song (upload)</option>
+          <option value="none">No music (silent)</option>
+        </select>
+        <input type="file" id="audioFile" accept="audio/*" style="display:none;margin-top:10px" />
+        <div class="checkline"><input type="checkbox" id="showBar" checked /> Show progress bar in video</div>
+        <div class="checkline"><input type="checkbox" id="showRec" /> Show REC timer in video</div>
+      </div>
+    </div>
+    <div class="hint" style="margin-top:14px">⚠ Very long videos (10+ min) use a lot of memory — 720p / 24fps is safest. Keep this tab visible while recording.</div>
+  </fieldset>
+
+  <canvas id="cv" width="1280" height="720"></canvas>
+
+  <div class="bar">
+    <button id="btnPreview">▶ Preview</button>
+    <button id="btnRecord" class="rec">● Record &amp; Download</button>
+    <button id="btnStop" class="stop" disabled>■ Stop</button>
+  </div>
+  <p id="status">Ready.</p>
+  <div id="result"></div>
+</div>
+
+<script>
+"use strict";
+/* ============================== CORE STATE ============================== */
+const cv  = document.getElementById("cv");
+const ctx = cv.getContext("2d", { alpha: false });
+let W = cv.width, H = cv.height;
+
+const state = {
+  story: "lantern", title: "The Lantern Keeper", dedication: "",
+  duration: 180, fps: 30, music: "piano", showRec: false, showBar: true
+};
+
+let mode = "idle";          // idle | preview | record
+let raf = 0, startT = 0, lastT = 0, lastSec = -1;
+let recorder = null, chunks = [], resultUrl = null;
+let userAudio = null;
+
+/* ============================== SMALL HELPERS ============================== */
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const ease  = x => { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); };
+const lerp  = (a, b, u) => a + (b - a) * u;
+const TAU = Math.PI * 2;
+function r(i) { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
+function fmt(s) { s = Math.floor(s); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
+const ntf = n => 440 * Math.pow(2, (n - 69) / 12);
+function wrapMod(v, m) { return ((v % m) + m) % m; }
+function qp(a, b, c, u) { const v = 1 - u; return v * v * a + 2 * v * u * b + u * u * c; }
+
+/* ============================== DRAW HELPERS ============================== */
+function bg(c, W, H, stops) {
+  const g = c.createLinearGradient(0, 0, 0, H);
+  stops.forEach((col, i) => g.addColorStop(i / (stops.length - 1), col));
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+}
+function glow(c, x, y, rad, rgb, a = 0.5) {
+  if (rad <= 0 || a <= 0) return;
+  const g = c.createRadialGradient(x, y, 0, x, y, rad);
+  g.addColorStop(0, `rgba(${rgb},${a})`); g.addColorStop(1, `rgba(${rgb},0)`);
+  c.fillStyle = g; c.beginPath(); c.arc(x, y, rad, 0, TAU); c.fill();
+}
+function starfield(c, W, H, t, n = 90, maxA = 1, top = 0.8) {
+  for (let i = 0; i < n; i++) {
+    const x = r(i) * W, y = r(i + 50) * H * top;
+    const a = (0.3 + 0.7 * Math.abs(Math.sin(t * (0.4 + r(i + 9) * 1.4) + r(i + 3) * 7))) * maxA;
+    const s = r(i + 7) < 0.12 ? 2.2 : 1.2;
+    c.fillStyle = `rgba(255,255,242,${a})`;
+    c.beginPath(); c.arc(x, y, s, 0, TAU); c.fill();
+  }
+}
+function flare(c, x, y, s, rgb, a) {
+  glow(c, x, y, s * 1.7, rgb, a);
+  c.strokeStyle = `rgba(${rgb},${a * 0.7})`; c.lineWidth = Math.max(1, s * 0.03);
+  c.beginPath();
+  c.moveTo(x - s * 1.5, y); c.lineTo(x + s * 1.5, y);
+  c.moveTo(x, y - s * 1.5); c.lineTo(x, y + s * 1.5);
+  c.stroke();
+  c.fillStyle = `rgba(255,255,255,${a})`;
+  c.beginPath(); c.arc(x, y, s * 0.14, 0, TAU); c.fill();
+}
+function hillY(x, W, baseY, amp, phase, freq) { return baseY + Math.sin(x / W * Math.PI * freq + phase) * amp; }
+function hillPath(c, W, H, baseY, amp, color, phase = 0, freq = 1.8) {
+  c.fillStyle = color; c.beginPath(); c.moveTo(0, H); c.lineTo(0, baseY);
+  for (let x = 0; x <= W; x += W / 64) c.lineTo(x, hillY(x, W, baseY, amp, phase, freq));
+  c.lineTo(W, H); c.closePath(); c.fill();
+}
+function sea(c, W, H, horizon, t, amp = 0.012, dark = "rgba(8,14,34,0.95)", light = "rgba(150,175,225,0.22)") {
+  c.fillStyle = dark; c.fillRect(0, horizon, W, H - horizon);
+  c.strokeStyle = light; c.lineWidth = Math.max(1, H / 720);
+  for (let j = 0; j < 8; j++) {
+    const y = horizon + (H - horizon) * (j + 1) / 9;
+    c.beginPath();
+    for (let x = 0; x <= W; x += W / 48) {
+      const yy = y + Math.sin(x / W * 9 + j * 2.2 + t * (0.9 + j * 0.18)) * (H - horizon) * amp * (j + 1) / 4;
+      x === 0 ? c.moveTo(x, yy) : c.lineTo(x, yy);
+    }
+    c.stroke();
+  }
+}
+function boat(c, x, y, s, t, color = "#0a0f1e") {
+  c.save(); c.translate(x, y); c.rotate(Math.sin(t * 1.4) * 0.07);
+  c.fillStyle = color;
+  c.beginPath(); c.moveTo(-s, 0); c.quadraticCurveTo(0, s * 0.45, s, 0); c.closePath(); c.fill();
+  c.strokeStyle = color; c.lineWidth = Math.max(1.5, s * 0.08);
+  c.beginPath(); c.moveTo(0, 0); c.lineTo(0, -s * 1.15); c.stroke();
+  c.restore();
+}
+function rain(c, W, H, t, n = 160, warm = false) {
+  c.strokeStyle = warm ? "rgba(255,222,170,0.28)" : "rgba(190,210,240,0.30)";
+  c.lineWidth = 1; c.beginPath();
+  for (let i = 0; i < n; i++) {
+    const x = wrapMod(r(i) * W + t * 40 * (0.6 + r(i + 2)), W);
+    const y = wrapMod(r(i + 31) * H + t * (500 + r(i + 5) * 400), H);
+    c.moveTo(x, y); c.lineTo(x - H * 0.012, y + H * 0.045);
+  }
+  c.stroke();
+}
+function clouds(c, W, H, t, alpha = 1, speed = 1) {
+  for (let i = 0; i < 7; i++) {
+    const x = wrapMod(r(i) * W * 1.4 + t * (6 + r(i + 2) * 10) * speed, W * 1.4) - W * 0.2;
+    const y = H * (0.07 + r(i + 4) * 0.2);
+    c.fillStyle = `rgba(10,14,26,${0.55 * alpha})`;
+    c.beginPath(); c.ellipse(x, y, W * (0.2 + r(i + 6) * 0.18), H * (0.045 + r(i + 8) * 0.05), 0, 0, TAU); c.fill();
+  }
+}
+function pine(c, x, y, h, color = "#0a0d16") {
+  c.fillStyle = color; c.beginPath();
+  c.moveTo(x, y - h); c.lineTo(x + h * 0.28, y); c.lineTo(x - h * 0.28, y);
+  c.closePath(); c.fill();
+}
+function house(c, x, y, w, h, color, t) {
+  c.fillStyle = color; c.fillRect(x - w / 2, y - h, w, h);
+  c.beginPath(); c.moveTo(x - w * 0.62, y - h); c.lineTo(x, y - h * 1.55); c.lineTo(x + w * 0.62, y - h); c.closePath(); c.fill();
+  const fl = 0.7 + 0.3 * Math.sin(t * 3 + x);
+  c.fillStyle = `rgba(255,190,110,${0.85 * fl})`;
+  c.fillRect(x - w * 0.12, y - h * 0.62, w * 0.24, h * 0.28);
+}
+function person(c, x, y, h, color = "#0a0e18", arm = null) {
+  c.fillStyle = color; c.strokeStyle = color; c.lineCap = "round";
+  c.lineWidth = Math.max(2, h * 0.11);
+  c.beginPath();
+  c.moveTo(x, y - h * 0.42); c.lineTo(x - h * 0.07, y);
+  c.moveTo(x, y - h * 0.42); c.lineTo(x + h * 0.09, y);
+  c.moveTo(x, y - h * 0.72); c.lineTo(x, y - h * 0.42);
+  if (arm === "upR") { c.moveTo(x, y - h * 0.68); c.lineTo(x + h * 0.16, y - h * 0.95); }
+  else if (arm === "upL") { c.moveTo(x, y - h * 0.68); c.lineTo(x - h * 0.16, y - h * 0.95); }
+  else if (arm === "fwd") { c.moveTo(x, y - h * 0.66); c.lineTo(x + h * 0.18, y - h * 0.6); }
+  c.stroke();
+  c.beginPath(); c.arc(x, y - h * 0.85, h * 0.085, 0, TAU); c.fill();
+}
+function lantern(c, x, y, s, t) {
+  const f = 0.75 + 0.25 * Math.sin(t * 6.3) + 0.08 * Math.sin(t * 17.7);
+  glow(c, x, y, s * 8 * f, "255,190,90", 0.5);
+  c.fillStyle = "#241606";
+  c.fillRect(x - s * 0.5, y - s * 0.78, s, s * 0.16);
+  c.fillRect(x - s * 0.38, y - s * 0.6, s * 0.76, s * 1.1);
+  c.strokeStyle = "#241606"; c.lineWidth = Math.max(1.5, s * 0.09);
+  c.beginPath(); c.arc(x, y - s * 0.8, s * 0.3, Math.PI, 0); c.stroke();
+  c.fillStyle = `rgba(255,215,130,${0.7 + 0.3 * f})`;
+  c.beginPath(); c.arc(x, y - s * 0.05, s * 0.3, 0, TAU); c.fill();
+}
+function skyline(c, W, H, horizonY, t, litFrac = 0.5, warm = false, seed = 3) {
+  for (let b = 0; b < 12; b++) {
+    const bw = W * (0.05 + r(b + seed) * 0.07);
+    const bx = (b / 12) * W + r(b + seed + 1) * W * 0.02;
+    const bh = H * (0.12 + r(b + seed + 2) * 0.22);
+    c.fillStyle = "#0b1120"; c.fillRect(bx, horizonY - bh, bw, bh);
+    const cols = Math.max(2, Math.floor(bw / (W * 0.012)));
+    const rows = Math.max(3, Math.floor(bh / (H * 0.045)));
+    for (let cx = 0; cx < cols; cx++) for (let cy = 0; cy < rows; cy++) {
+      if (r(b * 97 + cx * 13 + cy * 7 + seed) >= litFrac) continue;
+      const fl = 0.7 + 0.3 * Math.sin(t * 2 + r(b + cx + cy) * 9);
+      c.fillStyle = warm ? `rgba(255,185,105,${0.85 * fl})` : `rgba(255,228,168,${0.8 * fl})`;
+      c.fillRect(bx + bw * (cx + 0.25) / cols, horizonY - bh + bh * (cy + 0.25) / rows,
+                 Math.max(2, bw / cols * 0.5), Math.max(2, bh / rows * 0.4));
+    }
+  }
+}
+function heartXY(k, th) {
+  return [16 * Math.pow(Math.sin(th), 3),
+          13 * Math.cos(th) - 5 * Math.cos(2 * th) - 2 * Math.cos(3 * th) - Math.cos(4 * th)];
+}
+function heartField(c, W, H, t, p) {
+  const k = Math.min(W, H) / 42;
+  c.save(); c.translate(W / 2, H * 0.42);
+  const beat = 1 + 0.045 * Math.sin(t * 2.8) + 0.025 * Math.sin(t * 5.6);
+  c.scale(beat, beat);
+  const N = 150;
+  [1, 0.88, 0.76, 0.62].forEach((L, li) => {
+    for (let i = 0; i < N; i++) {
+      const id = i + li * 1000;
+      const th = (i / N) * TAU + (li % 2 ? 0.02 : 0);
+      const [hx, hy] = heartXY(k * L, th);
+      const d = r(id) * 0.35, a = clamp((p - d) / 0.5, 0, 1), e = 1 - Math.pow(1 - a, 3);
+      const sx = (r(id + 7) - 0.5) * W * 1.3, sy = (r(id + 13) - 0.5) * H * 1.3;
+      const x = sx + (hx - sx) * e, y = sy + (-hy - sy) * e;
+      const tw = 0.55 + 0.45 * Math.sin(t * 3 + i * 1.7 + li);
+      c.fillStyle = `rgba(255,${140 + ((r(id + 3) * 70) | 0)},160,${(0.25 + 0.6 * tw) * e})`;
+      const s = 1.2 + r(id + 5) * 2.4;
+      c.fillRect(x - s / 2, y - s / 2, s, s);
+    }
+  });
+  c.restore();
+  glow(c, W / 2, H * 0.42, H * 0.42, "255,80,120", 0.10 + 0.05 * Math.sin(t * 2.8));
+}
+
+/* ============================== NARRATION TEXT ============================== */
+const wrapCache = new Map();
+function wrapped(c, text, maxW, fs) {
+  const key = fs + "|" + text;
+  let rows = wrapCache.get(key);
+  if (rows) return rows;
+  rows = []; let cur = "";
+  text.split(" ").forEach(w => {
+    const test = cur ? cur + " " + w : w;
+    if (c.measureText(test).width > maxW && cur) { rows.push(cur); cur = w; } else cur = test;
+  });
+  if (cur) rows.push(cur);
+  wrapCache.set(key, rows);
+  return rows;
+}
+function drawNarration(c, W, H, lines, st, dur) {
+  const fs = Math.round(H * 0.048);
+  c.font = `italic ${fs}px Georgia, serif`;
+  c.textAlign = "center"; c.textBaseline = "middle";
+  const maxW = W * 0.74, slot = dur / lines.length, lh = fs * 1.42;
+  const rows = [];
+  lines.forEach((ln, i) => {
+    const local = st - i * slot;
+    if (local <= 0) return;
+    const reveal = clamp(local / Math.min(slot * 0.8, 2.4), 0, 1);
+    let chars = Math.ceil(ln.length * Math.min(1, reveal * 1.12));
+    if (chars <= 0) return;
+    const alpha = Math.min(1, reveal * 1.5);
+    wrapped(c, ln, maxW, fs).forEach(rw => {
+      if (chars <= 0) return;
+      rows.push({ r: rw.slice(0, chars), a: alpha });
+      chars -= rw.length + 1;
+    });
+  });
+  let y = H * 0.79 - (rows.length - 1) * lh / 2;
+  rows.forEach(row => {
+    c.globalAlpha = row.a;
+    c.fillStyle = "#f4edda";
+    c.shadowColor = "rgba(0,0,0,0.85)"; c.shadowBlur = fs * 0.35;
+    c.fillText(row.r, W / 2, y);
+    y += lh;
+  });
+  c.globalAlpha = 1; c.shadowBlur = 0; c.textBaseline = "alphabetic";
+}
+
+/* ============================== SCENE PAINTERS ============================== */
+const PAINT = {
+
+  titleCard(c, W, H, t, p) {
+    bg(c, W, H, ["#05070f", "#0c1430", "#1c2a55"]);
+    starfield(c, W, H, t, 120, 0.8);
+    glow(c, W / 2, H * 0.35, H * 0.55, "120,140,255", 0.08);
+    const a = p < 0.12 ? p / 0.12 : p > 0.88 ? Math.max(0, (1 - p) / 0.12) : 1;
+    c.save(); c.globalAlpha = a; c.textAlign = "center";
+    const fs = Math.round(H * 0.072);
+    c.font = `600 ${fs}px Georgia, serif`;
+    c.fillStyle = "#f6e7c6"; c.shadowColor = "rgba(0,0,0,0.6)"; c.shadowBlur = 20;
+    const rows = wrapped(c, state.title || "A Story", W * 0.8, fs);
+    let y = H * 0.36 - (rows.length - 1) * fs * 0.6;
+    rows.forEach(rw => { c.fillText(rw, W / 2, y); y += fs * 1.2; });
+    c.shadowBlur = 0;
+    c.fillStyle = "rgba(232,190,120,0.95)";
+    c.fillRect(W / 2 - H * 0.12, y - H * 0.035, H * 0.24, Math.max(2, H * 0.003));
+    c.font = `italic ${Math.round(H * 0.03)}px Georgia, serif`;
+    c.fillStyle = "#b9c4e4";
+    c.fillText(currentStory().intro, W / 2, y + H * 0.055);
+    if (state.dedication) { c.fillStyle = "#e8c98d"; c.fillText("for " + state.dedication, W / 2, y + H * 0.11); }
+    c.restore();
+  },
+
+  /* -------- The Lantern Keeper -------- */
+  duskHill(c, W, H, t, p) {
+    bg(c, W, H, ["#1b1233", "#5a2e52", "#c96a4a"]);
+    glow(c, W * 0.7, H * 0.62, H * 0.5, "255,140,80", 0.22);
+    sea(c, W, H, H * 0.6, t, 0.01, "rgba(25,15,40,0.9)", "rgba(255,170,120,0.15)");
+    starfield(c, W, H, t, 50, p * 0.8, 0.5);
+    const bY = H * 0.76, amp = H * 0.035, ph = 1.2, fq = 2.2;
+    hillPath(c, W, H, bY, amp, "#0d0a16", ph, fq);
+    const fx = W * 0.74, fy = hillY(fx, W, bY, amp, ph, fq);
+    person(c, fx, fy, H * 0.16, "#0a0714", "upR");
+    lantern(c, fx + H * 0.026, fy - H * 0.152, H * 0.012, t);
+    for (let i = 0; i < 8; i++) {
+      const hx = W * 0.04 + i * W * 0.045, hy = H * 0.87;
+      c.fillStyle = "#0d0a16"; c.fillRect(hx, hy - H * 0.03, W * 0.03, H * 0.03);
+      c.fillStyle = `rgba(255,190,110,${0.6 + 0.3 * Math.sin(t * 3 + i)})`;
+      c.fillRect(hx + W * 0.011, hy - H * 0.02, W * 0.008, H * 0.009);
+    }
+  },
+
+  lanternClose(c, W, H, t, p) {
+    bg(c, W, H, ["#120b1c", "#241432", "#3a1f3a"]);
+    starfield(c, W, H, t, 40, 0.5, 0.45);
+    glow(c, W / 2, H * 0.46, H * 0.55, "255,180,80", 0.16);
+    lantern(c, W / 2, H * 0.44, H * 0.075, t);
+    sea(c, W, H, H * 0.8, t, 0.008, "rgba(14,8,24,0.95)", "rgba(255,190,120,0.2)");
+    c.fillStyle = "rgba(255,200,120,0.28)";
+    for (let i = 0; i < 6; i++)
+      c.fillRect(W / 2 - H * 0.008, H * 0.82 + i * H * 0.028, H * 0.016, H * 0.012);
+  },
+
+  village(c, W, H, t, p) {
+    bg(c, W, H, ["#141030", "#2a1c46", "#4a2c52"]);
+    glow(c, W * 0.16, H * 0.14, H * 0.12, "230,235,255", 0.6);
+    c.fillStyle = "#e8ecf7"; c.beginPath(); c.arc(W * 0.16, H * 0.14, H * 0.045, 0, TAU); c.fill();
+    c.fillStyle = "#221a44"; c.beginPath(); c.arc(W * 0.145, H * 0.125, H * 0.04, 0, TAU); c.fill();
+    starfield(c, W, H, t, 60, 0.7, 0.5);
+    hillPath(c, W, H, H * 0.8, H * 0.05, "#100c22", 0.6, 2);
+    for (let i = 0; i < 7; i++)
+      house(c, W * (0.12 + i * 0.12), H * (0.85 + r(i) * 0.03), W * 0.07, H * 0.06, "#0b0918", t);
+    person(c, W * 0.3, H * 0.88, H * 0.1, "#080612", "upR");
+    person(c, W * 0.36, H * 0.885, H * 0.085, "#080612");
+    const bY = H * 0.76, amp = H * 0.04, ph = 1.2, fq = 2.2;
+    const fx = W * 0.8, fy = hillY(fx, W, bY, amp, ph, fq);
+    person(c, fx, fy, H * 0.12, "#080612", "upR");
+    lantern(c, fx + H * 0.02, fy - H * 0.114, H * 0.009, t);
+  },
+
+  storm(c, W, H, t, p) {
+    bg(c, W, H, ["#0a0e1a", "#141a2c", "#232c42"]);
+    clouds(c, W, H, t, 1, 1.6);
+    sea(c, W, H, H * 0.5, t, 0.03);
+    const bY = H * 0.7, amp = H * 0.04, ph = 0.5, fq = 2;
+    hillPath(c, W, H, bY, amp, "#080a14", ph, fq);
+    const fx = W * 0.78, fy = hillY(fx, W, bY, amp, ph, fq);
+    person(c, fx, fy, H * 0.14, "#060810", "upR");
+    lantern(c, fx + H * 0.022, fy - H * 0.133, H * 0.011, t);
+    boat(c, W * 0.22, H * 0.62, H * 0.04, t * 2);
+    rain(c, W, H, t, 200);
+    if (r(Math.floor(t * 2)) > 0.9) { c.fillStyle = "rgba(220,230,255,0.3)"; c.fillRect(0, 0, W, H); }
+  },
+
+  stormLight(c, W, H, t, p) {
+    bg(c, W, H, ["#0a0e1a", "#141a2c", "#232c42"]);
+    const lx = W * 0.8, ly = H * 0.42;
+    glow(c, lx, ly, H * (0.45 + 0.06 * Math.sin(t * 6.3)), "255,190,90", 0.42);
+    sea(c, W, H, H * 0.58, t, 0.028);
+    const bY = H * 0.68, amp = H * 0.04, ph = 0.5, fq = 2;
+    hillPath(c, W, H, bY, amp, "#080a14", ph, fq);
+    const fy = hillY(lx, W, bY, amp, ph, fq);
+    person(c, lx, fy, H * 0.16, "#060810", "upR");
+    lantern(c, lx + H * 0.026, fy - H * 0.152, H * 0.013, t);
+    boat(c, W * (0.2 + 0.28 * p), H * 0.66, H * (0.035 + 0.03 * p), t * 2);
+    rain(c, W, H, t, 170);
+    rain(c, W, H, t * 1.1, 60, true);
+  },
+
+  dawnShore(c, W, H, t, p) {
+    bg(c, W, H, ["#3a2a55", "#c76a5a", "#f5c08a"]);
+    glow(c, W * 0.45, H * 0.52, H * 0.45, "255,180,110", 0.5);
+    c.fillStyle = "#ffe4b8"; c.beginPath(); c.arc(W * 0.45, H * 0.53, H * 0.05, 0, TAU); c.fill();
+    sea(c, W, H, H * 0.58, t, 0.008, "rgba(50,28,52,0.85)", "rgba(255,200,140,0.3)");
+    c.fillStyle = "rgba(255,220,160,0.35)";
+    for (let i = 0; i < 7; i++)
+      c.fillRect(W * 0.45 - H * 0.012 + Math.sin(t * 2 + i) * H * 0.01, H * 0.6 + i * H * 0.035, H * 0.024, H * 0.012);
+    hillPath(c, W, H, H * 0.74, H * 0.05, "#241325", 2.4, 1.8);
+    const fx = W * 0.8, fy = hillY(fx, W, H * 0.74, H * 0.05, 2.4, 1.8);
+    person(c, fx, fy, H * 0.15, "#170b16", "upR");
+    lantern(c, fx + H * 0.024, fy - H * 0.1425, H * 0.011, t);
+    boat(c, W * 0.3, H * 0.78, H * 0.045, t);
+    c.fillStyle = "#1c0f1c"; c.fillRect(0, H * 0.86, W, H * 0.14);
+  },
+
+  epilogue(c, W, H, t, p) {
+    bg(c, W, H, ["#241a3e", "#5a3a58", "#a5624e"]);
+    glow(c, W * 0.5, H * 0.56, H * 0.5, "255,170,110", 0.28);
+    sea(c, W, H, H * 0.6, t, 0.006, "rgba(40,22,48,0.85)", "rgba(255,190,130,0.2)");
+    hillPath(c, W, H, H * 0.72, H * 0.05, "#1b1020", 1.1, 1.9);
+    const fy = hillY(W * 0.35, W, H * 0.72, H * 0.05, 1.1, 1.9);
+    person(c, W * 0.32, fy, H * 0.15, "#120a18");
+    person(c, W * 0.39, fy, H * 0.145, "#120a18");
+    lantern(c, W * 0.355, fy - H * 0.09, H * 0.008, t);
+    starfield(c, W, H, t, 30, 0.4, 0.35);
+  },
+
+  /* -------- shared ending -------- */
+  heart(c, W, H, t, p) {
+    bg(c, W, H, ["#16060e", "#2a0a18", "#421226"]);
+    starfield(c, W, H, t, 40, 0.35, 0.9);
+    heartField(c, W, H, t, p);
+  },
+
+  /* -------- The Little Star -------- */
+  nightSky(c, W, H, t, p) {
+    bg(c, W, H, ["#04060f", "#0a1026", "#16203f"]);
+    starfield(c, W, H, t, 130, 0.85);
+    hillPath(c, W, H, H * 0.85, H * 0.03, "#05070f", 0.4, 2);
+    hillPath(c, W, H, H * 0.9, H * 0.02, "#03040a", 2.2, 2.6);
+    flare(c, W * 0.62, H * 0.28, H * 0.02, "200,215,255", 0.5 + 0.2 * Math.sin(t * 2));
+  },
+
+  bigStars(c, W, H, t, p) {
+    bg(c, W, H, ["#04060f", "#0a1026", "#141c38"]);
+    starfield(c, W, H, t, 110, 0.8);
+    for (let i = 0; i < 5; i++) {
+      const x = W * (0.12 + r(i) * 0.76), y = H * (0.1 + r(i + 9) * 0.3);
+      flare(c, x, y, H * (0.016 + r(i + 4) * 0.02), "225,235,255", 0.7);
+    }
+    glow(c, W * 0.18, H * 0.62, H * 0.05, "200,210,255", 0.16 + 0.08 * Math.sin(t * 1.6));
+    c.fillStyle = "rgba(220,228,255,0.7)";
+    c.beginPath(); c.arc(W * 0.18, H * 0.62, H * 0.005, 0, TAU); c.fill();
+  },
+
+  lostChild(c, W, H, t, p) {
+    bg(c, W, H, ["#05070d", "#0b101d", "#121827"]);
+    starfield(c, W, H, t, 40, 0.25 * (1 - p), 0.4);
+    clouds(c, W, H, t, 1, 1.4);
+    c.fillStyle = "#060810"; c.fillRect(0, H * 0.78, W, H * 0.22);
+    c.strokeStyle = "#0a0d18"; c.lineWidth = 2;
+    for (let i = 0; i < 60; i++) {
+      const x = r(i) * W, y = H * (0.8 + r(i + 3) * 0.16);
+      c.beginPath(); c.moveTo(x, y); c.lineTo(x + (r(i + 7) - 0.5) * 8, y - H * 0.02); c.stroke();
+    }
+    person(c, W * 0.46 + Math.sin(t * 0.7) * 6, H * 0.8, H * 0.12, "#04060c");
+  },
+
+  starSeam(c, W, H, t, p) {
+    bg(c, W, H, ["#04060d", "#0a0f1e", "#10162a"]);
+    starfield(c, W, H, t, 60, 0.5);
+    clouds(c, W, H, t, 1, 0.7);
+    const sx = W * 0.66, sy = H * 0.26;
+    glow(c, sx, sy, H * (0.3 + 0.05 * Math.sin(t * 2.2)), "210,225,255", 0.35);
+    flare(c, sx, sy, H * 0.03, "225,235,255", 0.8);
+    c.fillStyle = "rgba(190,210,255,0.06)";
+    c.beginPath(); c.moveTo(sx, sy); c.lineTo(sx - W * 0.16, H); c.lineTo(sx + W * 0.16, H); c.closePath(); c.fill();
+    person(c, W * 0.5, H * 0.86, H * 0.11, "#04060c");
+    c.fillStyle = "#060810"; c.fillRect(0, H * 0.86, W, H * 0.14);
+  },
+
+  followPath(c, W, H, t, p) {
+    bg(c, W, H, ["#04060f", "#0a1024", "#131b33"]);
+    starfield(c, W, H, t, 90, 0.6);
+    const P0 = [W * 0.44, H * 1.02], P1 = [W * 0.5, H * 0.72], P2 = [W * 0.64, H * 0.52];
+    c.strokeStyle = "rgba(190,205,240,0.3)"; c.lineWidth = Math.max(3, H * 0.008);
+    c.setLineDash([12, 14]);
+    c.beginPath(); c.moveTo(P0[0], P0[1]); c.quadraticCurveTo(P1[0], P1[1], P2[0], P2[1]); c.stroke();
+    c.setLineDash([]);
+    for (let i = 0; i < 10; i++) {
+      pine(c, W * (0.04 + r(i) * 0.3), H * (0.72 + r(i + 5) * 0.24), H * (0.14 + r(i + 9) * 0.12));
+      pine(c, W * (0.68 + r(i + 20) * 0.28), H * (0.7 + r(i + 25) * 0.26), H * (0.12 + r(i + 31) * 0.14));
+    }
+    const u = 0.25 + 0.5 * p;
+    const px = qp(P0[0], P1[0], P2[0], u), py = qp(P0[1], P1[1], P2[1], u);
+    const su = Math.min(1, u + 0.12);
+    const stx = qp(P0[0], P1[0], P2[0], su), sty = qp(P0[1], P1[1], P2[1], su) - H * 0.14;
+    flare(c, stx, sty, H * 0.012, "215,228,255", 0.75);
+    person(c, px, py - Math.abs(Math.sin(t * 6)) * H * 0.006, H * 0.1, "#04060c");
+    c.strokeStyle = "#10131f"; c.lineWidth = Math.max(2, H * 0.006);
+    c.beginPath(); c.moveTo(P2[0] - W * 0.03, P2[1]); c.lineTo(P2[0] - W * 0.03, P2[1] - H * 0.07);
+    c.moveTo(P2[0] + W * 0.03, P2[1]); c.lineTo(P2[0] + W * 0.03, P2[1] - H * 0.07);
+    c.moveTo(P2[0] - W * 0.04, P2[1] - H * 0.07); c.lineTo(P2[0] + W * 0.04, P2[1] - H * 0.07); c.stroke();
+  },
+
+  starJoy(c, W, H, t, p) {
+    bg(c, W, H, ["#05070f", "#0c1329", "#182345"]);
+    starfield(c, W, H, t, 110, 0.3 + 0.6 * p);
+    clouds(c, W, H, t, 1 - p, 0.8);
+    const sx = W * 0.6, sy = H * 0.26;
+    glow(c, sx, sy, H * (0.26 + 0.06 * Math.sin(t * 2.4)), "200,215,255", 0.4);
+    flare(c, sx, sy, H * 0.032, "228,238,255", 0.9);
+    for (let i = 0; i < 12; i++) {
+      const a = t * 1.4 + i * TAU / 12;
+      c.fillStyle = `rgba(230,238,255,${0.4 + 0.4 * Math.sin(t * 3 + i)})`;
+      c.beginPath(); c.arc(sx + Math.cos(a) * H * 0.05, sy + Math.sin(a) * H * 0.035, 1.8, 0, TAU); c.fill();
+    }
+    c.fillStyle = "#060810"; c.fillRect(0, H * 0.86, W, H * 0.14);
+    person(c, W * 0.72, H * 0.87, H * 0.1, "#04060c");
+    c.strokeStyle = "#10131f"; c.lineWidth = Math.max(2, H * 0.005);
+    for (let i = 0; i < 6; i++) {
+      c.beginPath(); c.moveTo(W * (0.66 + i * 0.025), H * 0.87); c.lineTo(W * (0.66 + i * 0.025), H * 0.835); c.stroke();
+    }
+    c.beginPath(); c.moveTo(W * 0.65, H * 0.845); c.lineTo(W * 0.82, H * 0.845); c.stroke();
+  },
+
+  /* -------- Forty Letters -------- */
+  attic(c, W, H, t, p) {
+    bg(c, W, H, ["#161009", "#241a10", "#31241a"]);
+    const g = c.createLinearGradient(W * 0.8, 0, W * 0.4, H);
+    g.addColorStop(0, "rgba(255,225,160,0.26)"); g.addColorStop(1, "rgba(255,225,160,0)");
+    c.fillStyle = g;
+    c.beginPath(); c.moveTo(W * 0.62, 0); c.lineTo(W * 0.98, 0); c.lineTo(W * 0.78, H); c.lineTo(W * 0.38, H); c.closePath(); c.fill();
+    for (let i = 0; i < 50; i++) {
+      const x = W * (0.42 + r(i) * 0.34), y = wrapMod(r(i + 9) * H - t * 12 * (0.5 + r(i + 2)), H);
+      c.fillStyle = `rgba(255,230,180,${0.1 + 0.2 * r(i + 5)})`;
+      c.fillRect(x, y, 2, 2);
+    }
+    c.fillStyle = "#0d0906"; c.fillRect(0, H * 0.8, W, H * 0.2);
+    c.fillStyle = "#1a120b"; c.fillRect(W * 0.18, H * 0.64, W * 0.2, H * 0.16);
+    c.fillRect(W * 0.17, H * 0.6, W * 0.22, H * 0.05);
+    person(c, W * 0.66, H * 0.8, H * 0.32, "#0d0906");
+  },
+
+  letterScene(c, W, H, t, p) {
+    bg(c, W, H, ["#1b1410", "#2a1e15", "#3a2a1c"]);
+    glow(c, W / 2, H * 0.46, H * 0.55, "255,190,110", 0.22 + 0.04 * Math.sin(t * 3));
+    const s = Math.min(W, H), pw = s * 0.36, ph = pw * 0.68;
+    c.save(); c.translate(W / 2, H * 0.44); c.rotate(-0.03);
+    c.fillStyle = "rgba(0,0,0,0.35)"; c.fillRect(-pw / 2 + 8, -ph / 2 + 10, pw, ph);
+    c.fillStyle = "#f3e9d2"; c.fillRect(-pw / 2, -ph / 2, pw, ph);
+    c.strokeStyle = "rgba(60,45,30,0.75)"; c.lineWidth = Math.max(1.5, s * 0.006); c.lineCap = "round";
+    const rows = 6;
+    for (let i = 0; i < rows; i++) {
+      const lp = clamp(p * rows - i, 0, 1);
+      if (lp <= 0) continue;
+      const y = -ph * 0.3 + i * ph * 0.14;
+      c.beginPath(); c.moveTo(-pw * 0.4, y); c.lineTo(-pw * 0.4 + pw * 0.8 * lp, y); c.stroke();
+    }
+    c.fillStyle = "#8c2f39";
+    c.beginPath(); c.arc(pw * 0.38, ph * 0.3, s * 0.018, 0, TAU); c.fill();
+    c.restore();
+  },
+
+  mayaWrites(c, W, H, t, p) {
+    bg(c, W, H, ["#0e1424", "#1a2338", "#2a3350"]);
+    const wx = W * 0.66, wy = H * 0.12, ww = W * 0.18, wh = H * 0.34;
+    c.fillStyle = "#0a0f1e"; c.fillRect(wx, wy, ww, wh);
+    glow(c, wx + ww * 0.7, wy + wh * 0.25, ww * 0.45, "220,230,255", 0.7);
+    c.fillStyle = "#e9edf8"; c.beginPath(); c.arc(wx + ww * 0.7, wy + wh * 0.25, H * 0.024, 0, TAU); c.fill();
+    c.strokeStyle = "#101828"; c.lineWidth = Math.max(3, H * 0.008);
+    c.strokeRect(wx, wy, ww, wh);
+    c.beginPath(); c.moveTo(wx + ww / 2, wy); c.lineTo(wx + ww / 2, wy + wh);
+    c.moveTo(wx, wy + wh / 2); c.lineTo(wx + ww, wy + wh / 2); c.stroke();
+    glow(c, W * 0.4, H * 0.58, H * 0.45, "255,200,120", 0.16);
+    c.fillStyle = "#160f0a"; c.fillRect(0, H * 0.68, W, H * 0.32);
+    person(c, W * 0.4 + Math.sin(t * 0.8) * 2, H * 0.68, H * 0.36, "#0b0812", "fwd");
+    c.fillStyle = "#e8dcc0"; c.fillRect(W * 0.47, H * 0.65, H * 0.15, H * 0.05);
+    c.strokeStyle = "rgba(90,70,50,0.7)"; c.lineWidth = 1.5;
+    for (let i = 0; i < 3; i++) {
+      const lp = clamp(p * 3 - i, 0, 1);
+      c.beginPath(); c.moveTo(W * 0.48, H * 0.663 + i * H * 0.012);
+      c.lineTo(W * 0.48 + H * 0.12 * lp, H * 0.663 + i * H * 0.012); c.stroke();
+    }
+  },
+
+  /* -------- The Kindness Chain -------- */
+  cityMorning(c, W, H, t, p) {
+    bg(c, W, H, ["#2b2340", "#7a4a5e", "#e0906a"]);
+    const sy = H * (0.58 - 0.05 * p);
+    glow(c, W * 0.5, sy, H * 0.4, "255,170,100", 0.4);
+    c.fillStyle = "#ffd9a0"; c.beginPath(); c.arc(W * 0.5, sy, H * 0.05, 0, TAU); c.fill();
+    skyline(c, W, H, H * 0.72, t, 0.3 - 0.15 * p, false, 5);
+    glow(c, W * 0.36, H * 0.66, H * 0.08, "255,190,110", 0.5 + 0.15 * Math.sin(t * 3));
+    c.strokeStyle = "rgba(40,30,50,0.8)"; c.lineWidth = 2;
+    for (let i = 0; i < 5; i++) {
+      const bx = wrapMod(W * (0.15 + i * 0.18) + t * 22, W * 1.2) - W * 0.1;
+      const by = H * (0.24 + r(i) * 0.14) + Math.sin(t + i) * 8;
+      c.beginPath(); c.moveTo(bx - 8, by); c.quadraticCurveTo(bx, by - 6, bx + 8, by); c.stroke();
+    }
+  },
+
+  cafe(c, W, H, t, p) {
+    bg(c, W, H, ["#1c120a", "#2e1c10", "#43291a"]);
+    c.strokeStyle = "#0d0805"; c.lineWidth = 4;
+    c.beginPath(); c.moveTo(W / 2, 0); c.lineTo(W / 2, H * 0.18); c.stroke();
+    c.fillStyle = "#0d0805";
+    c.beginPath(); c.moveTo(W / 2 - H * 0.05, H * 0.24); c.lineTo(W / 2, H * 0.17); c.lineTo(W / 2 + H * 0.05, H * 0.24); c.closePath(); c.fill();
+    glow(c, W / 2, H * 0.26, H * 0.5, "255,190,110", 0.3);
+    c.fillStyle = "#150c06"; c.fillRect(W * 0.2, H * 0.64, W * 0.6, H * 0.03);
+    c.fillRect(W * 0.24, H * 0.67, H * 0.02, H * 0.2);
+    c.fillRect(W * 0.74, H * 0.67, H * 0.02, H * 0.2);
+    [W * 0.42, W * 0.58].forEach((cx, ci) => {
+      c.fillStyle = "#e9dfc8"; c.fillRect(cx - H * 0.024, H * 0.6, H * 0.048, H * 0.04);
+      c.strokeStyle = "#e9dfc8"; c.lineWidth = 3;
+      c.beginPath(); c.arc(cx + H * 0.03, H * 0.615, H * 0.012, -1.2, 1.2); c.stroke();
+      c.strokeStyle = "rgba(255,255,255,0.16)"; c.lineWidth = 2;
+      for (let k = 0; k < 3; k++) {
+        const off = (t * 0.5 + k * 0.33 + ci * 0.2) % 1;
+        c.beginPath();
+        c.moveTo(cx - 6 + k * 6, H * 0.59 - off * H * 0.09);
+        c.quadraticCurveTo(cx - 6 + k * 6 + Math.sin(t * 2 + k) * 6, H * 0.57 - off * H * 0.09,
+                           cx - 6 + k * 6, H * 0.55 - off * H * 0.09);
+        c.stroke();
+      }
+    });
+  },
+
+  phone(c, W, H, t, p) {
+    bg(c, W, H, ["#0b101f", "#141c30", "#202a44"]);
+    c.save();
+    c.beginPath(); c.rect(W * 0.55, H * 0.08, W * 0.38, H * 0.55); c.clip();
+    c.fillStyle = "#0a1226"; c.fillRect(W * 0.55, H * 0.08, W * 0.38, H * 0.55);
+    starfield(c, W, H, t, 40, 0.6, 0.4);
+    skyline(c, W, H, H * 0.62, t, 0.35, true, 9);
+    c.restore();
+    c.strokeStyle = "#0e1526"; c.lineWidth = Math.max(4, H * 0.01);
+    c.strokeRect(W * 0.55, H * 0.08, W * 0.38, H * 0.55);
+    c.fillStyle = "#080b14"; c.fillRect(0, H * 0.84, W, H * 0.16);
+    person(c, W * 0.42, H * 0.84, H * 0.4, "#05070e", "upR");
+    const hx = W * 0.42 + H * 0.064, hy = H * 0.84 - H * 0.38;
+    glow(c, hx, hy, H * 0.09, "190,220,255", 0.4 + 0.1 * Math.sin(t * 2));
+    c.fillStyle = "#0d1424"; c.fillRect(hx - H * 0.008, hy - H * 0.014, H * 0.016, H * 0.028);
+  },
+
+  traffic(c, W, H, t, p) {
+    bg(c, W, H, ["#2a1a3e", "#5a3a6e", "#b06a5a"]);
+    glow(c, W * 0.3, H * 0.5, H * 0.3, "255,160,110", 0.25);
+    c.fillStyle = "#141018"; c.fillRect(0, H * 0.62, W, H * 0.38);
+    c.fillStyle = "rgba(255,255,255,0.22)";
+    const off = (t * 120) % 90;
+    for (let x = -90; x < W + 90; x += 90) c.fillRect(x + off, H * 0.8, 46, 6);
+    function car(x, y, s, col) {
+      c.fillStyle = col;
+      c.fillRect(x - s * 0.5, y - s * 0.28, s, s * 0.28);
+      c.fillRect(x - s * 0.22, y - s * 0.5, s * 0.55, s * 0.26);
+      c.fillStyle = "#05070c";
+      c.beginPath(); c.arc(x - s * 0.3, y, s * 0.11, 0, TAU); c.arc(x + s * 0.3, y, s * 0.11, 0, TAU); c.fill();
+      glow(c, x + s * 0.55, y - s * 0.14, s * 0.9, "255,225,150", 0.5);
+    }
+    car(W * 0.32 + Math.sin(t * 0.5) * 4, H * 0.8, H * 0.11, "#1a1424");
+    const mu = Math.min(1, p * 1.6);
+    car(W * (0.68 + 0.04 * p), lerp(H * 0.6, H * 0.8, ease(mu)), H * 0.11, "#241a30");
+  },
+
+  cityNight(c, W, H, t, p) {
+    bg(c, W, H, ["#05070f", "#0b1226", "#1a2440"]);
+    starfield(c, W, H, t, 60, 0.6, 0.4);
+    glow(c, W * 0.82, H * 0.14, H * 0.1, "230,235,255", 0.5);
+    c.fillStyle = "#e9edf8"; c.beginPath(); c.arc(W * 0.82, H * 0.14, H * 0.035, 0, TAU); c.fill();
+    skyline(c, W, H, H * 0.74, t, 0.3 + 0.55 * p, true, 3);
+    if (p > 0) { c.fillStyle = `rgba(255,170,90,${0.12 * p})`; c.fillRect(0, 0, W, H); }
+  }
+};
+
+/* ============================== STORIES ============================== */
+const STORIES = {
+  lantern: {
+    title: "The Lantern Keeper",
+    intro: "A story about a small light that refused to go out",
+    scenes: [
+      { paint: "duskHill", w: 1.1, lines: ["Every evening, when the sky turned to ink,", "old Elias climbed the hill above the village —", "carrying a lantern older than anyone who remembered it."] },
+      { paint: "lanternClose", w: 1, lines: ["He lit it the way his wife had taught him,", "many years ago, on a shore very much like this one.", "\"A light,\" she said, \"is a promise you make to strangers.\""] },
+      { paint: "village", w: 1, lines: ["The children laughed at him.", "\"Nobody walks the dark road anymore, old man.\"", "But Elias only smiled, and climbed the hill again."] },
+      { paint: "storm", w: 1.15, lines: ["Then one night a storm swallowed the stars whole,", "and far from the shore, a little boat lost its way home.", "The wind tore at the sails. The sea forgot its kindness."] },
+      { paint: "stormLight", w: 1.15, lines: ["But on the hill, one small light refused to go out.", "The rain came sideways. The thunder shook the ground.", "Elias held the lantern higher — the way you hold a hand."] },
+      { paint: "dawnShore", w: 1.15, lines: ["And when the fisherman finally saw the shore,", "he saw the old man still standing there — soaked, smiling, alive.", "Some people are lighthouses. They never move. They just keep shining."] },
+      { paint: "epilogue", w: 1.1, lines: ["\"Who were you waiting for?\" the fisherman asked.", "Elias looked at the little lantern, and then at the sea.", "\"Everyone,\" he said softly. \"I was waiting for everyone.\""] },
+      { paint: "heart", w: 1.5, lines: ["Some lights don't guide ships.", "They guide hearts.", "This one is for you."] }
+    ]
+  },
+  star: {
+    title: "The Little Star",
+    intro: "A story about being small — and mattering anyway",
+    scenes: [
+      { paint: "nightSky", w: 1, lines: ["Far above the world, in the velvet dark,", "lived a little star who believed", "she was far too small to matter."] },
+      { paint: "bigStars", w: 1, lines: ["The great stars burned bold and brilliant.", "She only flickered — shy as a candle behind curtains.", "\"Nobody notices a light like me,\" she whispered."] },
+      { paint: "lostChild", w: 1.1, lines: ["But one night a child wandered off the path,", "and the clouds closed over the sky like a hand.", "The world went dark in every direction."] },
+      { paint: "starSeam", w: 1.1, lines: ["Yet high above, one small light slipped through a seam in the clouds —", "a pinprick of silver, no bigger than a tear.", "And the child looked up."] },
+      { paint: "followPath", w: 1.2, lines: ["Step by step, the child followed it —", "past the sleeping trees, past the whispering grass,", "all the way to the garden gate. Home."] },
+      { paint: "starJoy", w: 1.1, lines: ["That night the little star learned something", "the great stars may never know:", "you don't have to be the brightest light in the sky."] },
+      { paint: "heart", w: 1.5, lines: ["You only have to shine", "for someone.", "Somewhere tonight, someone needs your light."] }
+    ]
+  },
+  letters: {
+    title: "Forty Letters",
+    intro: "A story about love that keeps changing hands",
+    scenes: [
+      { paint: "attic", w: 1.1, lines: ["When Maya cleared her grandmother's attic,", "she found forty sealed letters in a wooden box —", "one for every year she had been alive."] },
+      { paint: "letterScene", w: 1, lines: ["The first one said:", "\"Today you learned to walk.", "I clapped until my hands hurt.\""] },
+      { paint: "letterScene", w: 1, lines: ["The seventh said:", "\"Today you started school.", "I pretended not to cry. I lied.\""] },
+      { paint: "letterScene", w: 1, lines: ["The twentieth said:", "\"Today you left home.", "The house felt too big — so I wrote to you anyway.\""] },
+      { paint: "letterScene", w: 1.1, lines: ["The last letter was newer than all the rest.", "It said only this:", "\"If you are reading this — keep writing to someone you love.\""] },
+      { paint: "mayaWrites", w: 1.1, lines: ["So now, every Sunday morning, Maya writes.", "To her mother. To old friends.", "To strangers who need one and don't know it yet."] },
+      { paint: "heart", w: 1.5, lines: ["Love doesn't end when someone leaves.", "It just changes hands.", "Pass it on."] }
+    ]
+  },
+  chain: {
+    title: "The Kindness Chain",
+    intro: "A story about one coffee that warmed a whole city",
+    scenes: [
+      { paint: "cityMorning", w: 1.1, lines: ["It began with a coffee —", "paid for by a stranger who never left a name.", "Just a nod, a warm cup, and gone."] },
+      { paint: "cafe", w: 1, lines: ["The waitress smiled for the rest of her shift.", "A tired nurse noticed that smile,", "and held a patient's hand one minute longer."] },
+      { paint: "phone", w: 1.1, lines: ["That patient called his daughter that night,", "just to say \"I love you\" — for no reason,", "on a perfectly ordinary Tuesday."] },
+      { paint: "traffic", w: 1.1, lines: ["The next morning she let a hurried stranger merge.", "He let someone else go first.", "And so it went — from heart, to heart, to heart."] },
+      { paint: "cityNight", w: 1.2, lines: ["Nobody planned it. Nobody saw the whole chain.", "But by nightfall, a whole city", "glowed a little warmer than it had at dawn."] },
+      { paint: "heart", w: 1.5, lines: ["One small kindness is never small.", "It just keeps walking.", "Let it walk through you today."] }
+    ]
+  }
+};
+function currentStory() { return STORIES[state.story]; }
+
+/* ============================== TIMELINE ============================== */
+let timeline = [], TOTAL = state.duration;
+function rebuild() {
+  TOTAL = state.duration;
+  const story = currentStory();
+  const scenes = [{ paint: "titleCard", w: 1, lines: [] }, ...story.scenes];
+  const totalW = scenes.reduce((s, x) => s + x.w, 0);
+  let t = 0;
+  timeline = scenes.map(sc => {
+    const dur = TOTAL * sc.w / totalW;
+    const o = { ...sc, start: t, dur };
+    t += dur;
+    return o;
+  });
+}
+function sceneAt(t) {
+  for (let i = timeline.length - 1; i >= 0; i--)
+    if (t >= timeline[i].start) return timeline[i];
+  return timeline[0];
+}
+
+/* ============================== RENDER ============================== */
+let vigGrad = null;
+function makeVignette() {
+  vigGrad = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.45, W / 2, H / 2, Math.max(W, H) * 0.72);
+  vigGrad.addColorStop(0, "rgba(0,0,0,0)"); vigGrad.addColorStop(1, "rgba(0,0,0,0.36)");
+}
+function render(t, fadeOn = true) {
+  const sc = sceneAt(t);
+  const st = t - sc.start, p = clamp(st / sc.dur, 0, 1);
+  PAINT[sc.paint](ctx, W, H, t, p);
+
+  const band = ctx.createLinearGradient(0, H * 0.55, 0, H);
+  band.addColorStop(0, "rgba(0,0,0,0)"); band.addColorStop(1, "rgba(0,0,0,0.5)");
+  ctx.fillStyle = band; ctx.fillRect(0, H * 0.55, W, H * 0.45);
+
+  if (sc.paint !== "titleCard" && sc.lines.length) drawNarration(ctx, W, H, sc.lines, st, sc.dur);
+
+  if (sc.paint === "heart" && state.dedication) {
+    const a = clamp((p - 0.55) / 0.2, 0, 1);
+    if (a > 0) {
+      ctx.save(); ctx.globalAlpha = a; ctx.textAlign = "center";
+      ctx.font = `italic ${Math.round(H * 0.034)}px Georgia, serif`;
+      ctx.fillStyle = "#f0c987"; ctx.shadowColor = "rgba(0,0,0,0.8)"; ctx.shadowBlur = 10;
+      ctx.fillText("— for " + state.dedication + " —", W / 2, H * 0.93);
+      ctx.restore();
+    }
+  }
+
+  if (state.showBar) {
+    ctx.fillStyle = "rgba(255,255,255,0.16)"; ctx.fillRect(0, H - 5, W, 5);
+    ctx.fillStyle = "rgba(240,217,166,0.9)"; ctx.fillRect(0, H - 5, W * clamp(t / TOTAL, 0, 1), 5);
+  }
+
+  if (vigGrad) { ctx.fillStyle = vigGrad; ctx.fillRect(0, 0, W, H); }
+
+  if (fadeOn) {
+    const f = Math.min(1, t / 1.2, (TOTAL - t) / 1.4);
+    if (f < 1) { ctx.fillStyle = `rgba(4,5,10,${1 - f})`; ctx.fillRect(0, 0, W, H); }
+  }
+
+  if (state.showRec) {
+    const on = Math.sin(t * 5) > -0.2;
+    if (on) { ctx.fillStyle = "#ff5252"; ctx.beginPath(); ctx.arc(W - H * 0.06, H * 0.06, H * 0.012, 0, TAU); ctx.fill(); }
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
+    ctx.font = `bold ${Math.round(H * 0.03)}px Arial`; ctx.textAlign = "right";
+    ctx.fillText("REC " + fmt(t), W - H * 0.04, H * 0.07);
+    ctx.textAlign = "left";
+  }
+  lastT = t;
+}
+
+/* ============================== MUSIC ENGINE ============================== */
+const STEP = 60 / 72 / 2, BAR = STEP * 8;
+const PROG = [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]];
+class MusicEngine {
+  constructor() { this.ctx = null; this.timer = null; this.sources = []; }
+  ensure() {
+    if (!this.ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      this.ctx = new AC();
+      this.master = this.ctx.createGain(); this.master.gain.value = 0.85;
+      this.dest = this.ctx.createMediaStreamDestination();
+      this.master.connect(this.ctx.destination);
+      this.master.connect(this.dest);
+      this.delay = this.ctx.createDelay(1); this.delay.delayTime.value = 0.42;
+      this.dGain = this.ctx.createGain(); this.dGain.gain.value = 0.3;
+      this.delay.connect(this.dGain); this.dGain.connect(this.delay); this.dGain.connect(this.master);
+    }
+    if (this.ctx.state === "suspended") this.ctx.resume();
+  }
+  pluck(n, t, vel) {
+    const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+    o.type = "triangle"; o.frequency.value = ntf(n);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(vel * 0.5, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.6);
+    o.connect(g); g.connect(this.master); g.connect(this.delay);
+    o.start(t); o.stop(t + 1.7);
+  }
+  pad(chord, t, dur) {
+    const f = this.ctx.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 750;
+    f.connect(this.master);
+    chord.forEach(n => {
+      [-4, 4].forEach(det => {
+        const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+        o.type = "sine"; o.frequency.value = ntf(n); o.detune.value = det;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(0.045, t + dur * 0.35);
+        g.gain.linearRampToValueAtTime(0.0001, t + dur);
+        o.connect(g); g.connect(f);
+        o.start(t); o.stop(t + dur + 0.1);
+      });
+    });
+  }
+  scheduleStep(step, t) {
+    const bar = Math.floor(step / 8), si = step % 8;
+    const chord = PROG[bar % PROG.length];
+    if (si === 0) this.pad(chord, t, BAR + 0.3);
+    if (si === 0) this.pluck(chord[0] - 12, t, 0.55);
+    const pool = [chord[0], chord[1], chord[2], chord[1] + 12, chord[2] + 12, chord[0] + 12];
+    const pat = [0, 2, 4, 3, 5, 4, 2, 1];
+    let n = pool[pat[si]];
+    if (si === 7 && bar % 4 === 3) n += 12;
+    this.pluck(n, t, (si % 2 === 0 ? 0.5 : 0.32) * (0.8 + 0.4 * r(step)));
+  }
+  start(useMode, buffer) {
+    this.ensure(); this.stopSource();
+    this.playing = true;
+    if (useMode === "file" && buffer) {
+      const src = this.ctx.createBufferSource();
+      src.buffer = buffer; src.loop = true;
+      const g = this.ctx.createGain(); g.gain.value = 0.8;
+      src.connect(g); g.connect(this.master);
+      src.start(); this.sources.push(src);
+      return;
+    }
+    this.step = 0; this.nextT = this.ctx.currentTime + 0.15;
+    this.timer = setInterval(() => {
+      while (this.nextT < this.ctx.currentTime + 0.6) {
+        this.scheduleStep(this.step, this.nextT);
+        this.step++; this.nextT += STEP;
+      }
+    }, 90);
+  }
+  stopSource() {
+    if (this.timer) clearInterval(this.timer);
+    this.timer = null;
+    this.sources.forEach(s => { try { s.stop(); } catch (e) {} });
+    this.sources = [];
+    if (this.ctx) {
+      const now = this.ctx.currentTime;
+      this.master.gain.cancelScheduledValues(now);
+      this.master.gain.setValueAtTime(this.master.gain.value, now);
+      this.master.gain.linearRampToValueAtTime(0, now + 0.35);
+      setTimeout(() => {
+        if (this.ctx) {
+          const n2 = this.ctx.currentTime;
+          this.master.gain.cancelScheduledValues(n2);
+          this.master.gain.setValueAtTime(0.85, n2);
+        }
+      }, 600);
+    }
+  }
+}
+const music = new MusicEngine();
+
+/* ============================== MAIN LOOP ============================== */
+function frame(now) {
+  if (mode === "idle") return;
+  const elapsed = (now - startT) / 1000;
+  if (mode === "preview") {
+    render(elapsed % TOTAL);
+  } else {
+    const t = Math.min(elapsed, TOTAL);
+    render(t);
+    const sec = Math.floor(elapsed);
+    if (sec !== lastSec) {
+      lastSec = sec;
+      setStatus(`● Recording… ${fmt(elapsed)} / ${fmt(TOTAL)} — keep this tab visible!`);
+    }
+    if (elapsed >= TOTAL) { finishRecording(); return; }
+  }
+  raf = requestAnimationFrame(frame);
+}
+
+/* ============================== UI WIRING ============================== */
+const $ = id => document.getElementById(id);
+const statusEl = $("status"), resultEl = $("result");
+function setStatus(s) { statusEl.textContent = s; }
+
+$("storySel").addEventListener("change", e => {
+  state.story = e.target.value;
+  const prevTitle = $("titleInp").value.trim();
+  if (!prevTitle || Object.values(STORIES).some(s => s.title === prevTitle))
+    $("titleInp").value = STORIES[state.story].title;
+  state.title = $("titleInp").value;
+  rebuild(); render(0, false);
+});
+$("titleInp").addEventListener("input", e => { state.title = e.target.value; if (mode === "idle") render(0, false); });
+$("dedicInp").addEventListener("input", e => { state.dedication = e.target.value.trim(); if (mode === "idle") render(0, false); });
+
+const durRange = $("durRange");
+function durLabel(v) { return v < 60 ? v + " sec" : Math.floor(v / 60) + " min " + (v % 60 ? (v % 60) + "s" : ""); }
+function syncDur() { state.duration = +durRange.value; $("durVal").textContent = durLabel(state.duration); rebuild(); }
+durRange.addEventListener("input", syncDur);
+
+$("resSel").addEventListener("change", e => {
+  const [w, h] = e.target.value.split("x").map(Number);
+  cv.width = W = w; cv.height = H = h;
+  makeVignette();
+  if (mode === "idle") render(0, false);
+});
+$("fpsSel").addEventListener("change", e => { state.fps = +e.target.value; });
+
+$("musicSel").addEventListener("change", e => {
+  state.music = e.target.value;
+  $("audioFile").style.display = state.music === "file" ? "block" : "none";
+});
+$("audioFile").addEventListener("change", async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    music.ensure();
+    const buf = await file.arrayBuffer();
+    userAudio = await music.ctx.decodeAudioData(buf);
+    setStatus("♪ Song loaded: " + file.name);
+  } catch (err) {
+    userAudio = null;
+    setStatus("Couldn't decode that audio file — the generated piano will be used instead.");
+  }
+});
+$("showBar").addEventListener("change", e => state.showBar = e.target.checked);
+$("showRec").addEventListener("change", e => state.showRec = e.target.checked);
+
+/* ---------- preview ---------- */
+$("btnPreview").addEventListener("click", async () => {
+  if (mode === "preview") { stopEverything(); return; }
+  if (mode === "record") return;
+  mode = "preview";
+  $("btnPreview").textContent = "■ Stop Preview";
+  if (state.music !== "none") {
+    const use = (state.music === "file" && userAudio) ? state.music : "piano";
+    music.start(use, userAudio);
+  }
+  startT = performance.now(); lastSec = -1;
+  setStatus("Preview playing… (music is live)");
+  raf = requestAnimationFrame(frame);
+});
+
+/* ---------- recording ---------- */
+function pickMime() {
+  const list = ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm", "video/mp4"];
+  return list.find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || "";
+}
+$("btnRecord").addEventListener("click", async () => {
+  if (typeof MediaRecorder === "undefined") { setStatus("This browser can't record video. Try Chrome or Edge."); return; }
+  stopPreviewOnly();
+  resultEl.innerHTML = "";
+  if (resultUrl) { URL.revokeObjectURL(resultUrl); resultUrl = null; }
+
+  const stream = cv.captureStream(state.fps);
+  if (state.music !== "none") {
+    const use = (state.music === "file" && userAudio) ? state.music : "piano";
+    music.start(use, userAudio);
+    await new Promise(res => setTimeout(res, 150));
+    music.dest.stream.getAudioTracks().forEach(tr => stream.addTrack(tr));
+  }
+  const mime = pickMime();
+  try {
+    recorder = new MediaRecorder(stream, {
+      ...(mime ? { mimeType: mime } : {}),
+      videoBitsPerSecond: W >= 1920 ? 6_000_000 : 3_000_000
+    });
+  } catch (err) { setStatus("Recorder failed to start: " + err.message); return; }
+
+  chunks = [];
+  recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+  recorder.onstop = () => {
+    const blob = new Blob(chunks, { type: recorder.mimeType || "video/webm" });
+    resultUrl = URL.createObjectURL(blob);
+    const ext = (recorder.mimeType || "").includes("mp4") ? "mp4" : "webm";
+    const slug = (state.title || "story").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    const v = document.createElement("video");
+    v.src = resultUrl; v.controls = true; v.loop = true;
+    const a = document.createElement("a");
+    a.href = resultUrl;
+    a.download = `${slug || "story"}-${state.duration}s.${ext}`;
+    a.textContent = "⬇ Download video (" + ext.toUpperCase() + ", " + fmt(TOTAL) + ")";
+    resultEl.innerHTML = "<h2 style='color:#f4e7c8'>Your story video ♥</h2>";
+    resultEl.appendChild(v);
+    resultEl.appendChild(document.createElement("br"));
+    resultEl.appendChild(a);
+    setStatus("Done! Play it below, or download the file.");
+  };
+
+  mode = "record";
+  $("panel").disabled = true;
+  $("btnRecord").disabled = true;
+  $("btnPreview").disabled = true;
+  $("btnStop").disabled = false;
+  recorder.start(1000);
+  startT = performance.now(); lastSec = -1;
+  setStatus("● Recording… keep this tab visible!");
+  raf = requestAnimationFrame(frame);
+});
+
+function stopPreviewOnly() {
+  cancelAnimationFrame(raf);
+  mode = "idle";
+  music.stopSource();
+  $("btnPreview").textContent = "▶ Preview";
+}
+function stopEverything() {
+  stopPreviewOnly();
+  setStatus("Stopped.");
+  render(0, false);
+}
+function finishRecording() {
+  cancelAnimationFrame(raf);
+  if (recorder && recorder.state !== "inactive") recorder.stop();
+  setTimeout(() => music.stopSource(), 300);
+  mode = "idle";
+  $("panel").disabled = false;
+  $("btnRecord").disabled = false;
+  $("btnPreview").disabled = false;
+  $("btnStop").disabled = true;
+}
+$("btnStop").addEventListener("click", () => {
+  if (mode === "record") { setStatus("Finalizing video…"); finishRecording(); }
+  else stopEverything();
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && mode === "record")
+    setStatus("⚠ Tab was hidden — frames pause when the tab is hidden. Stay on this tab!");
+});
+
+/* ---------- boot ---------- */
+$("titleInp").value = STORIES.lantern.title;
+syncDur();
+makeVignette();
+rebuild();
+render(0, false);
+</script>
+</body>
+</html>
