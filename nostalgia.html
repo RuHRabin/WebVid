@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Nostalgic Memory - VHS 1997</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #050505;
+      font-family: 'Courier New', Courier, monospace;
+      user-select: none;
+    }
+    #container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    canvas {
+      box-shadow: 0 0 50px rgba(0, 0, 0, 0.9);
+      background: #000;
+    }
+    #overlay-start {
+      position: absolute;
+      color: #33ff33;
+      text-shadow: 0 0 10px #33ff33;
+      font-size: 24px;
+      letter-spacing: 2px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      z-index: 10;
+      background: rgba(0, 0, 0, 0.85);
+      padding: 40px;
+      border: 1px solid #33ff33;
+    }
+    .blink {
+      animation: blink 1s infinite alternate;
+    }
+    @keyframes blink {
+      0% { opacity: 1; }
+      100% { opacity: 0.2; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="container">
+  <canvas id="screen" width="960" height="720"></canvas>
+  <div id="overlay-start">
+    <div class="blink">► CLICK TO INSERT CASSETTE</div>
+    <div style="font-size: 14px; opacity: 0.7;">(Audio & Generative VHS Visuals)</div>
+  </div>
+</div>
+
+<script>
+/**
+ * NOSTALGIC GENERATIVE VHS ENGINE
+ * Pure Vanilla JS + Canvas2D + Web Audio API
+ */
+
+const canvas = document.getElementById('screen');
+const ctx = canvas.getContext('2d');
+const overlay = document.getElementById('overlay-start');
+
+// Offscreen buffer for color separation (Chromatic Aberration)
+const offscreen = document.createElement('canvas');
+offscreen.width = canvas.width;
+offscreen.height = canvas.height;
+const offCtx = offscreen.getContext('2d');
+
+let isRunning = false;
+let startTime = 0;
+let frameCount = 0;
+
+// Dust / Mote particles
+const dustParticles = Array.from({ length: 45 }, () => ({
+  x: Math.random() * canvas.width,
+  y: Math.random() * canvas.height,
+  size: Math.random() * 2 + 0.5,
+  speedY: -(Math.random() * 0.4 + 0.1),
+  speedX: (Math.random() - 0.5) * 0.2,
+  alpha: Math.random() * 0.5 + 0.2
+}));
+
+/* ========================================================
+   1. SOUND ENGINE (LO-FI NOSTALGIA SYNTH + TAPE HISS)
+======================================================== */
+let audioCtx, masterGain;
+
+function initAudio() {
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = audioCtx.createGain();
+  masterGain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+  masterGain.connect(audioCtx.destination);
+
+  // 1. Continuous Tape Hiss / Vinyl Noise
+  const bufferSize = audioCtx.sampleRate * 2;
+  const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const output = noiseBuffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    output[i] = (Math.random() * 2 - 1) * 0.035; // gentle white noise
+  }
+
+  const whiteNoise = audioCtx.createBufferSource();
+  whiteNoise.buffer = noiseBuffer;
+  whiteNoise.loop = true;
+
+  // Filter noise to sound like warm cassette tape hiss
+  const tapeFilter = audioCtx.createBiquadFilter();
+  tapeFilter.type = 'bandpass';
+  tapeFilter.frequency.value = 1100;
+  tapeFilter.Q.value = 0.7;
+
+  whiteNoise.connect(tapeFilter);
+  tapeFilter.connect(masterGain);
+  whiteNoise.start();
+
+  // 2. Dreamy Tape Synth Chords (Progression: Cmaj7 - Am7 - Fmaj7 - Gadd9)
+  const chords = [
+    [130.81, 164.81, 196.00, 246.94], // Cmaj7
+    [110.00, 130.81, 164.81, 196.00], // Am7
+    [87.31,  130.81, 174.61, 220.00], // Fmaj7
+    [98.00,  146.83, 196.00, 220.00]  // Gadd9
+  ];
+
+  let chordIndex = 0;
+
+  function playLoFiChord() {
+    if (!isRunning) return;
+    const now = audioCtx.currentTime;
+    const chord = chords[chordIndex];
+    chordIndex = (chordIndex + 1) % chords.length;
+
+    chord.forEach((freq) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const filter = audioCtx.createBiquadFilter();
+
+      // Tape wow & flutter (vibrato)
+      const flutter = audioCtx.createOscillator();
+      const flutterGain = audioCtx.createGain();
+      flutter.frequency.value = 4.5 + Math.random() * 1.5;
+      flutterGain.gain.value = 1.2;
+      flutter.connect(osc.frequency);
+      flutter.start(now);
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, now);
+
+      // Warm analog filter roll-off
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(450, now);
+      filter.frequency.exponentialRampToValueAtTime(750, now + 2);
+      filter.frequency.exponentialRampToValueAtTime(350, now + 5.8);
+
+      // Volume Envelope (Slow attack & long release)
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.exponentialRampToValueAtTime(0.08, now + 1.2);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 6);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(masterGain);
+
+      osc.start(now);
+      osc.stop(now + 6.2);
+      flutter.stop(now + 6.2);
+    });
+
+    setTimeout(playLoFiChord, 5200);
+  }
+
+  playLoFiChord();
+}
+
+/* ========================================================
+   2. SCENE RENDERING (DREAMY MEMORY LANDSCAPE)
+======================================================== */
+function drawDreamScene(time) {
+  const w = canvas.width;
+  const h = canvas.height;
+
+  // 1. Sunset Sky Gradient
+  const skyGrad = offCtx.createLinearGradient(0, 0, 0, h);
+  skyGrad.addColorStop(0, '#2b1055');
+  skyGrad.addColorStop(0.35, '#75225b');
+  skyGrad.addColorStop(0.65, '#b94848');
+  skyGrad.addColorStop(0.85, '#e0764e');
+  skyGrad.addColorStop(1, '#ffb86c');
+  offCtx.fillStyle = skyGrad;
+  offCtx.fillRect(0, 0, w, h);
+
+  // 2. Nostalgic Glowing Sun
+  const sunY = h * 0.52 + Math.sin(time * 0.2) * 5;
+  const sunGrad = offCtx.createRadialGradient(w / 2, sunY, 10, w / 2, sunY, 120);
+  sunGrad.addColorStop(0, 'rgba(255, 245, 190, 0.95)');
+  sunGrad.addColorStop(0.3, 'rgba(255, 170, 80, 0.6)');
+  sunGrad.addColorStop(1, 'rgba(255, 80, 50, 0)');
+  offCtx.fillStyle = sunGrad;
+  offCtx.beginPath();
+  offCtx.arc(w / 2, sunY, 120, 0, Math.PI * 2);
+  offCtx.fill();
+
+  // 3. Parallax Rolling Silhouettes (Hills / Distant Trees)
+  drawHill(offCtx, h * 0.68, 45, 0.003, time * 0.3, '#381636');
+  drawHill(offCtx, h * 0.78, 55, 0.005, time * 0.6, '#240d28');
+  drawHill(offCtx, h * 0.88, 30, 0.007, time * 1.0, '#100515');
+
+  // 4. Distant nostalgic birds
+  drawBird(offCtx, (time * 25) % (w + 100) - 50, h * 0.32 + Math.sin(time * 2) * 4);
+  drawBird(offCtx, ((time * 25) + 60) % (w + 100) - 50, h * 0.35 + Math.sin(time * 2 + 1) * 3);
+
+  // 5. Drifting Dust Motes
+  offCtx.fillStyle = 'rgba(255, 240, 200, 0.6)';
+  dustParticles.forEach(p => {
+    p.y += p.speedY;
+    p.x += p.speedX;
+    if (p.y < 0) p.y = h;
+    if (p.x < 0) p.x = w;
+    if (p.x > w) p.x = 0;
+
+    offCtx.globalAlpha = p.alpha;
+    offCtx.beginPath();
+    offCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    offCtx.fill();
+  });
+  offCtx.globalAlpha = 1.0;
+}
+
+function drawHill(c, baseline, amplitude, frequency, offset, color) {
+  c.fillStyle = color;
+  c.beginPath();
+  c.moveTo(0, canvas.height);
+  for (let x = 0; x <= canvas.width; x += 15) {
+    const y = baseline + Math.sin(x * frequency + offset) * amplitude;
+    c.lineTo(x, y);
+  }
+  c.lineTo(canvas.width, canvas.height);
+  c.closePath();
+  c.fill();
+}
+
+function drawBird(c, x, y) {
+  c.strokeStyle = 'rgba(40, 15, 30, 0.7)';
+  c.lineWidth = 1.8;
+  c.beginPath();
+  c.arc(x - 5, y, 6, Math.PI, 0, false);
+  c.arc(x + 5, y, 6, Math.PI, 0, false);
+  c.stroke();
+}
+
+/* ========================================================
+   3. VHS POST-PROCESSING FILTERS
+======================================================== */
+function applyVHSEffects(time) {
+  const w = canvas.width;
+  const h = canvas.height;
+
+  // Horizontal Tape Jitter / Glitch (Occasional)
+  let jitterX = 0;
+  if (Math.random() < 0.05) {
+    jitterX = (Math.random() - 0.5) * 6;
+  }
+
+  // Chromatic Aberration (RGB Color Splitting)
+  const shift = 2 + Math.sin(time * 3) * 1.5;
+  
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.clearRect(0, 0, w, h);
+
+  // Red Channel Shift
+  ctx.globalCompositeOperation = 'screen';
+  ctx.drawImage(offscreen, jitterX - shift, 0);
+  
+  // Green / Blue normal & Shifted
+  ctx.drawImage(offscreen, jitterX, 0);
+  ctx.drawImage(offscreen, jitterX + shift, 0);
+
+  // Reset Composite Mode
+  ctx.globalCompositeOperation = 'source-over';
+
+  // Tape Tracking Noise Bar (Glitch Line)
+  if (Math.random() < 0.03) {
+    const glitchY = Math.random() * h;
+    const glitchHeight = Math.random() * 8 + 2;
+    ctx.drawImage(offscreen, 0, glitchY, w, glitchHeight, (Math.random() - 0.5) * 20, glitchY, w, glitchHeight);
+  }
+
+  // Scanlines
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+  for (let y = 0; y < h; y += 3) {
+    ctx.fillRect(0, y, w, 1);
+  }
+
+  // Warm Sepia/Vintage Color Overlay Tint
+  ctx.fillStyle = 'rgba(180, 110, 40, 0.12)';
+  ctx.fillRect(0, 0, w, h);
+
+  // Film Grain / Static
+  const imgData = ctx.getImageData(0, 0, w, h);
+  const data = imgData.data;
+  for (let i = 0; i < data.length; i += 16) {
+    const noise = (Math.random() - 0.5) * 24;
+    data[i] = Math.min(255, Math.max(0, data[i] + noise));
+    data[i + 1] = Math.min(255, Math.max(0, data[i + 1] + noise));
+    data[i + 2] = Math.min(255, Math.max(0, data[i + 2] + noise));
+  }
+  ctx.putImageData(imgData, 0, 0);
+
+  // Vignette (Tube Monitor Edge Shadow)
+  const vignette = ctx.createRadialGradient(w / 2, h / 2, h * 0.45, w / 2, h / 2, h * 0.75);
+  vignette.addColorStop(0, 'rgba(0,0,0,0)');
+  vignette.addColorStop(1, 'rgba(0,0,0,0.65)');
+  ctx.fillStyle = vignette;
+  ctx.fillRect(0, 0, w, h);
+
+  // Retro 90s VCR OSD (On-Screen Display)
+  drawVCRText(time);
+}
+
+function drawVCRText(time) {
+  ctx.save();
+  ctx.font = '22px monospace';
+  ctx.fillStyle = '#33ff33'; // Classic VCR Green
+  ctx.shadowColor = '#33ff33';
+  ctx.shadowBlur = 6;
+
+  // "PLAY" with blinking icon
+  const showPlay = Math.floor(time * 2) % 2 === 0;
+  ctx.fillText(showPlay ? '▶ PLAY' : '  PLAY', 45, 55);
+  ctx.fillText('SP', 45, 85);
+
+  // Retro Timestamp (e.g., SUMMER '97)
+  const totalSeconds = Math.floor(time);
+  const m = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+  const s = String(totalSeconds % 60).padStart(2, '0');
+  const ms = String(Math.floor((time % 1) * 100)).padStart(2, '0');
+
+  ctx.textAlign = 'right';
+  ctx.fillText(`OCT. 14 1997`, canvas.width - 45, 55);
+  ctx.fillText(`AM 06:42:${s}`, canvas.width - 45, 85);
+  ctx.fillText(`0:${m}:${s}:${ms}`, canvas.width - 45, canvas.height - 45);
+
+  ctx.restore();
+}
+
+/* ========================================================
+   4. MAIN LOOP
+======================================================== */
+function render(timestamp) {
+  if (!startTime) startTime = timestamp;
+  const time = (timestamp - startTime) * 0.001;
+
+  drawDreamScene(time);
+  applyVHSEffects(time);
+
+  frameCount++;
+  requestAnimationFrame(render);
+}
+
+// Start user interaction handler
+overlay.addEventListener('click', () => {
+  overlay.style.display = 'none';
+  isRunning = true;
+  initAudio();
+  requestAnimationFrame(render);
+});
+</script>
+
+</body>
+</html>
